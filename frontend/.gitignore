@@ -1,0 +1,75 @@
+# dependencies
+/node_modules
+*/node_modules
+apps/**/*.DS_Store
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+apps/**/test*
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+apps/**/*.DS_Store
+*.pem
+apps/**/template*.*
+apps/**/template*
+
+# lockfiles
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# bun.lockb
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+apps/**/npm-debug.log*
+apps/**/yarn-debug.log*
+apps/**/yarn-error.log*
+apps/**/.pnpm-debug.log*
+
+# local env files
+.env*.local
+app/**/*.env*.local
+
+# vercel
+.vercel
+apps/**/.vercel
+
+# typescript
+*.tsbuildinfo
+apps/**/*.tsbuildinfo
+next-env.d.ts
+
+# ssl key and certificate
+.key-certificate
+apps/**/*.key-certificate
+
+certificates
+apps/**/certificates
+
+#########################
+
+.DS_Store
+node_modules
+.turbo
+*.log
+.next
+dist
+dist-ssr
+*.local
+.cache
+server/dist
+public/dist

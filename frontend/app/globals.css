@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@import "./styles/theme.css";
+
+/* :root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+} */
+
+.custom-overline {
+  @apply text-sm font-medium tracking-wide text-muted-foreground;
+}
+
+.form-section {
+  @apply bg-zinc-50 dark:bg-transparent dark:border;
+}
+.error-text {
+  @apply dark:text-red-500 text-destructive;
+}
+.page-header {
+  @apply bg-background sticky top-[60px] z-20 mb-4 flex items-center justify-between py-4;
+}
+.shrink-preview {
+  transform: scale(0.15);
+  top: -16px;
+  right: 0;
+  min-width: 98rem;
+  transform-origin: top right;
+}

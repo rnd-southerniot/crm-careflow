@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String?   // Optional for future Keycloak integration
+  fullName     String
+  roleId       String
+  role         Role      @relation(fields: [roleId], references: [id])
+  
+  assignedTasks       OnboardingTask[]
+  technicalReports    TechnicalReport[]
+  deviceProvisionings DeviceProvisioning[]
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  @@map("users")
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  permissions Json   // JSONB storing Permission[]
+  users       User[]
+  
+  @@map("roles")
+}
+
+model Product {
+  id              String  @id @default(cuid())
+  name            String
+  code            String  @unique
+  description     String
+  isActive        Boolean @default(true)
+  parentProductId String?
+  parentProduct   Product? @relation("ProductVariations", fields: [parentProductId], references: [id])
+  variations      Product[] @relation("ProductVariations")
+  
+  sopTemplate     SOPTemplate?
+  reportSchema    ReportSchema?
+  onboardingTasks OnboardingTask[]
+  hardwareConfigs ProductHardwareConfig[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("products")
+}
+
+// Hardware Category - Categories for organizing hardware components
+model HardwareCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "Microcontroller", "Sensor", "Module"
+  description String?
+  icon        String?  // Optional icon name for UI
+  isActive    Boolean  @default(true)
+  
+  hardware    Hardware[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("hardware_categories")
+}
+
+// Hardware Catalog - Physical component types in inventory
+model Hardware {
+  id              String   @id @default(cuid())
+  name            String   // e.g., "Arduino UNO R3", "ESP32-WROOM-32"
+  code            String   @unique // e.g., "ARD-UNO-R3", "ESP32-WROOM"
+  description     String?
+  categoryId      String
+  category        HardwareCategory @relation(fields: [categoryId], references: [id])
+  manufacturer    String?
+  isActive        Boolean  @default(true)
+  
+  productConfigs  ProductHardwareConfig[]
+  provisionings   DeviceProvisioning[]
+  procurements    HardwareProcurement[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("hardware")
+}
+
+// Links Products to compatible Hardware with firmware versions
+model ProductHardwareConfig {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  hardwareId      String
+  hardware        Hardware @relation(fields: [hardwareId], references: [id])
+  
+  firmwareVersion String   // e.g., "v2.1.0", "1.0.0-beta"
+  firmwareUrl     String?  // Optional URL to firmware binary
+  isDefault       Boolean  @default(false) // Default hardware for this product
+  notes           String?  // e.g., "Recommended for high-temp environments"
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([productId, hardwareId]) // One config per product-hardware pair
+  @@map("product_hardware_configs")
+}
+
+model SOPTemplate {
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id])
+  steps     Json    // JSONB storing SOPStep[]
+  version   Int     @default(1)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("sop_templates")
+}
+
+model ReportSchema {
+  id            String  @id @default(cuid())
+  productId     String  @unique
+  product       Product @relation(fields: [productId], references: [id])
+  formStructure Json    // JSONB storing FormField[]
+  version       Int     @default(1)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("report_schemas")
+}
+
+// Client - Reusable client/organization records
+model Client {
+  id          String   @id @default(cuid())
+  name        String   @unique // Organization/Company name
+  address     String   // Primary billing/shipping address  
+  notes       String?  // Optional notes about the client
+  isActive    Boolean  @default(true)
+  
+  onboardingTasks OnboardingTask[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("clients")
+}
+
+model OnboardingTask {
+  id             String     @id @default(cuid())
+  
+  // Client Reference (optional - for dropdown selection)
+  clientId       String?
+  client         Client?    @relation(fields: [clientId], references: [id])
+  
+  // Client Information (kept for flexibility and backwards compatibility)
+  clientName     String     // Organization/Client name
+  clientEmail    String     // Client email address
+  clientPhone    String     // Client phone number
+  clientAddress  String     // Client address
+  contactPerson  String     // Contact person name
+  
+  productId      String
+  product        Product    @relation(fields: [productId], references: [id])
+  currentStatus  TaskStatus
+  assignedUserId String?
+  assignedUser   User?      @relation(fields: [assignedUserId], references: [id])
+  sopSnapshot    Json       // JSONB storing SOPStep[] snapshot
+  
+  technicalReports     TechnicalReport[]
+  deviceProvisionings  DeviceProvisioning[]
+  hardwareProcurements HardwareProcurement[]
+  
+  scheduledDate  DateTime? // Scheduled date for site visit
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("onboarding_tasks")
+}
+
+// Hardware Procurement - Records hardware items and quantities procured for a task
+// Created during REQUIREMENTS_COMPLETE -> HARDWARE_PROCUREMENT_COMPLETE transition
+model HardwareProcurement {
+  id          String         @id @default(cuid())
+  taskId      String
+  task        OnboardingTask @relation(fields: [taskId], references: [id])
+  hardwareId  String
+  hardware    Hardware       @relation(fields: [hardwareId], references: [id])
+  quantity    Int            @default(1)
+  notes       String?
+  
+  createdAt   DateTime       @default(now())
+  
+  @@map("hardware_procurements")
+}
+
+model TechnicalReport {
+  id             String         @id @default(cuid())
+  taskId         String
+  task           OnboardingTask @relation(fields: [taskId], references: [id])
+  submissionData Json           // JSONB storing form responses
+  submittedBy    String
+  submitter      User           @relation(fields: [submittedBy], references: [id])
+  
+  submittedAt DateTime @default(now())
+  
+  @@map("technical_reports")
+}
+
+model DeviceProvisioning {
+  id              String         @id @default(cuid())
+  taskId          String
+  task            OnboardingTask @relation(fields: [taskId], references: [id])
+  deviceSerial    String         @unique
+  deviceType      String         // Kept for backward compatibility
+  hardwareId      String?        // Optional reference to Hardware catalog
+  hardware        Hardware?      @relation(fields: [hardwareId], references: [id])
+  firmwareVersion String
+  qrCode          String
+  provisionedBy   String
+  provisioner     User           @relation(fields: [provisionedBy], references: [id])
+  notes           String?
+  
+  provisionedAt DateTime @default(now())
+  
+  @@map("device_provisionings")
+}
+
+enum TaskStatus {
+  INITIALIZATION
+  SCHEDULED_VISIT
+  REQUIREMENTS_COMPLETE
+  HARDWARE_PROCUREMENT_COMPLETE
+  HARDWARE_PREPARED_COMPLETE
+  READY_FOR_INSTALLATION
+}

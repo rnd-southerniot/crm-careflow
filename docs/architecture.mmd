@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph Browser[User Browser]
+    UI[Next.js Frontend :3000]
+  end
+
+  subgraph API[Backend API]
+    BE[NestJS :3001]
+    Prisma[Prisma Client]
+  end
+
+  subgraph DB[Data]
+    PG[(Postgres :5432)]
+  end
+
+  UI -->|HTTPS/HTTP JSON| BE
+  BE --> Prisma
+  Prisma --> PG
+
+  OtherApp[Other App] -->|HTTP JSON (CORS allowlist)| BE
