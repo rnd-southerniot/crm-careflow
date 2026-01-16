@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crm_admin
+      POSTGRES_PASSWORD: crm_admin_password
+      POSTGRES_DB: crm_workflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_admin -d crm_workflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: crm-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://crm_admin:crm_admin_password@postgres:5432/crm_workflow?schema=public
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+      JWT_SECRET: change-me
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGINS: http://localhost:3000
+      WHATSAPP_API_URL: https://graph.facebook.com/v18.0
+      WHATSAPP_ACCESS_TOKEN: ""
+      WHATSAPP_PHONE_NUMBER_ID: ""
+      QR_CODE_BASE_URL: https://api.qrserver.com/v1/create-qr-code/
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: crm-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PROTOCOL: http
+      HOST_NAME: localhost
+      PORT: 3000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_DOMAIN: localhost
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

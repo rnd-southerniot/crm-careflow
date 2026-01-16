@@ -55,6 +55,25 @@ Backend supports a comma-separated allowlist:
 
 See `docs/architecture.mmd`.
 
+## Docker Deployment (Ubuntu VM)
+
+Use the production compose file to build and run Postgres, the Nest API, and the Next.js UI.
+
+```bash
+docker compose -f docker-compose.prod.yaml up -d --build
+```
+
+Update these values in `docker-compose.prod.yaml` before deploying:
+
+- Backend: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS`
+- Frontend: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_DOMAIN`, `NEXT_PUBLIC_API_URL`, `HOST_NAME`
+
+If you need logs:
+
+```bash
+docker compose -f docker-compose.prod.yaml logs -f
+```
+
 ## Smoke Test
 
 With services running:
@@ -76,4 +95,3 @@ mv /Users/arif/Projects/scomm-crm-tool /Users/Shared/work/scomm-crm-tool
 cd /Users/Shared/work/scomm-crm-tool
 git init
 ```
-
