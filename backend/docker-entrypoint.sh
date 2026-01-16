@@ -4,4 +4,4 @@ set -e
 echo "Running database migrations..."
 npx prisma migrate deploy
 
-exec node dist/main
+exec node dist/src/main
