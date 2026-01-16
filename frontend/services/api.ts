@@ -2,7 +2,9 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/lib/zustand-store/store';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const apiBaseFromWindow =
+  typeof window !== 'undefined' ? `http://${window.location.hostname}:3001` : undefined;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || apiBaseFromWindow || 'http://localhost:3001';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
