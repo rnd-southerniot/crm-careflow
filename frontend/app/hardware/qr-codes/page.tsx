@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,7 +51,9 @@ export default function QRCodesPage() {
     return (
         <ProtectedRoute requiredRole={["HARDWARE_ENGINEER", "ADMIN"]}>
             <DashboardLayout>
-                <QRCodesContent />
+                <Suspense fallback={<div />}>
+                    <QRCodesContent />
+                </Suspense>
             </DashboardLayout>
         </ProtectedRoute>
     );

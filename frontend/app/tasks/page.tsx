@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { workflowApi, OnboardingTask } from "@/services/api";
@@ -54,6 +54,14 @@ const STATUS_OPTIONS = [
 ];
 
 export default function TasksPage() {
+    return (
+        <Suspense fallback={<div />}>
+            <TasksPageContent />
+        </Suspense>
+    );
+}
+
+function TasksPageContent() {
     const searchParams = useSearchParams();
     const { user } = useAuthStore();
 
