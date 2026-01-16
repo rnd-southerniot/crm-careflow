@@ -44,6 +44,13 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        PROTOCOL: ${PROTOCOL:-https}
+        HOST_NAME: ${HOST_NAME:-crm.southerneleven.com}
+        PORT: ${PORT:-3000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://crm.southerneleven.com}
+        NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN:-crm.southerneleven.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.southerneleven.com}
     container_name: crm-frontend
     restart: unless-stopped
     environment:
