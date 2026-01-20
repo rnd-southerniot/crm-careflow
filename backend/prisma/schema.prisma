@@ -46,15 +46,19 @@ model Product {
   parentProductId String?
   parentProduct   Product? @relation("ProductVariations", fields: [parentProductId], references: [id])
   variations      Product[] @relation("ProductVariations")
-  
+
+  // LoRaWAN Integration
+  isLorawanProduct Boolean @default(false)
+  lorawanRegion    String? // EU868, US915, AU915, AS923, KR920, IN865
+
   sopTemplate     SOPTemplate?
   reportSchema    ReportSchema?
   onboardingTasks OnboardingTask[]
   hardwareConfigs ProductHardwareConfig[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("products")
 }
 
@@ -159,34 +163,38 @@ model Client {
 
 model OnboardingTask {
   id             String     @id @default(cuid())
-  
+
   // Client Reference (optional - for dropdown selection)
   clientId       String?
   client         Client?    @relation(fields: [clientId], references: [id])
-  
+
   // Client Information (kept for flexibility and backwards compatibility)
   clientName     String     // Organization/Client name
   clientEmail    String     // Client email address
   clientPhone    String     // Client phone number
   clientAddress  String     // Client address
   contactPerson  String     // Contact person name
-  
+
   productId      String
   product        Product    @relation(fields: [productId], references: [id])
   currentStatus  TaskStatus
   assignedUserId String?
   assignedUser   User?      @relation(fields: [assignedUserId], references: [id])
   sopSnapshot    Json       // JSONB storing SOPStep[] snapshot
-  
+
   technicalReports     TechnicalReport[]
   deviceProvisionings  DeviceProvisioning[]
   hardwareProcurements HardwareProcurement[]
-  
+
   scheduledDate  DateTime? // Scheduled date for site visit
+
+  // Location for gateway installation (LoRaWAN)
+  latitude   Float?
+  longitude  Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@map("onboarding_tasks")
 }
 
@@ -232,10 +240,25 @@ model DeviceProvisioning {
   provisionedBy   String
   provisioner     User           @relation(fields: [provisionedBy], references: [id])
   notes           String?
-  
+
+  // LoRaWAN Device Credentials
+  devEui                     String?  // 16-char hex device EUI
+  appKey                     String?  // 32-char hex application key
+  lorawanProvisioningStatus  LorawanProvisioningStatus @default(NOT_APPLICABLE)
+  lorawanProvisioningError   String?
+  lorawanProvisionedAt       DateTime?
+
   provisionedAt DateTime @default(now())
-  
+
   @@map("device_provisionings")
+}
+
+enum LorawanProvisioningStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  NOT_APPLICABLE
 }
 
 enum TaskStatus {
@@ -245,4 +268,32 @@ enum TaskStatus {
   HARDWARE_PROCUREMENT_COMPLETE
   HARDWARE_PREPARED_COMPLETE
   READY_FOR_INSTALLATION
+}
+
+// Webhook Log - Tracks all outgoing webhook calls for audit and debugging
+model WebhookLog {
+  id           String        @id @default(cuid())
+  taskId       String
+  webhookType  String        // e.g., "lorawan_provision"
+  endpoint     String        // Target URL
+  payload      Json          // Request payload
+  status       WebhookStatus @default(PENDING)
+  statusCode   Int?          // HTTP response status code
+  response     Json?         // Response body
+  errorMessage String?
+  attempts     Int           @default(0)
+  lastAttempt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@map("webhook_logs")
+}
+
+enum WebhookStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
 }

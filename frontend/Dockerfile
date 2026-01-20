@@ -28,9 +28,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3005
 
 COPY --from=build /app ./
 
-EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+EXPOSE 3005
+CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3005"]

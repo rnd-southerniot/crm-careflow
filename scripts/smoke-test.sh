@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE_URL="${API_BASE_URL:-http://localhost:3001}"
+API_BASE_URL="${API_BASE_URL:-http://localhost:3004}"
 EMAIL="${EMAIL:-admin@southerneleven.com}"
 PASSWORD="${PASSWORD:-password123}"
 

@@ -43,6 +43,16 @@ class DevicePreparationItem {
     @IsOptional()
     @IsString()
     notes?: string;
+
+    @ApiProperty({ example: '0004A30B001F9ABC', description: 'LoRaWAN DevEUI (16 hex chars)', required: false })
+    @IsOptional()
+    @IsString()
+    devEui?: string;
+
+    @ApiProperty({ example: '2B7E151628AED2A6ABF7158809CF4F3C', description: 'LoRaWAN AppKey (32 hex chars)', required: false })
+    @IsOptional()
+    @IsString()
+    appKey?: string;
 }
 
 export class UpdateTaskStatusDto {

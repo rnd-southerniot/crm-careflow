@@ -57,6 +57,8 @@ import {
     X,
     QrCode,
     Download,
+    Radio,
+    Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -193,14 +195,18 @@ interface PreparedDeviceEntry {
     deviceSerial: string;
     firmwareVersion: string;
     notes: string;
+    // LoRaWAN fields (optional)
+    devEui: string;
+    appKey: string;
 }
 
 interface HardwarePreparedDeviceFormProps {
     devices: PreparedDeviceEntry[];
     onChange: (index: number, field: string, value: string) => void;
+    isLorawanProduct?: boolean;
 }
 
-function HardwarePreparedDeviceForm({ devices, onChange }: HardwarePreparedDeviceFormProps) {
+function HardwarePreparedDeviceForm({ devices, onChange, isLorawanProduct }: HardwarePreparedDeviceFormProps) {
     // Group devices by hardware type for display
     const groupedByHardware: { [key: string]: { name: string; indices: number[] } } = {};
     devices.forEach((device, index) => {
@@ -220,7 +226,7 @@ function HardwarePreparedDeviceForm({ devices, onChange }: HardwarePreparedDevic
                     </div>
                     <div className="p-4 space-y-3">
                         {group.indices.map((deviceIndex, unitNumber) => (
-                            <div key={deviceIndex} className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded border">
+                            <div key={deviceIndex} className={`grid ${isLorawanProduct ? 'grid-cols-2' : 'grid-cols-2'} gap-3 p-3 bg-gray-50 rounded border`}>
                                 <div className="col-span-2 text-xs font-medium text-gray-500 mb-1">
                                     Unit #{unitNumber + 1}
                                 </div>
@@ -242,6 +248,34 @@ function HardwarePreparedDeviceForm({ devices, onChange }: HardwarePreparedDevic
                                         onChange={(e) => onChange(deviceIndex, 'firmwareVersion', e.target.value)}
                                     />
                                 </div>
+                                {isLorawanProduct && (
+                                    <>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-medium text-gray-600">
+                                                DevEUI <span className="text-gray-400">(16 hex, auto-gen if empty)</span>
+                                            </label>
+                                            <input
+                                                placeholder="e.g., 0004A30B001F9ABC"
+                                                maxLength={16}
+                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+                                                value={devices[deviceIndex].devEui}
+                                                onChange={(e) => onChange(deviceIndex, 'devEui', e.target.value.toUpperCase().replace(/[^0-9A-F]/g, ''))}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-medium text-gray-600">
+                                                AppKey <span className="text-gray-400">(32 hex, auto-gen if empty)</span>
+                                            </label>
+                                            <input
+                                                placeholder="e.g., 2B7E151628AED2A6..."
+                                                maxLength={32}
+                                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+                                                value={devices[deviceIndex].appKey}
+                                                onChange={(e) => onChange(deviceIndex, 'appKey', e.target.value.toUpperCase().replace(/[^0-9A-F]/g, ''))}
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -440,7 +474,9 @@ export default function TaskDetailPage() {
                     hardwareName: procurement.hardware?.name || 'Unknown Hardware',
                     deviceSerial: "",
                     firmwareVersion: "",
-                    notes: ""
+                    notes: "",
+                    devEui: "",
+                    appKey: "",
                 });
             }
         }
@@ -631,6 +667,7 @@ export default function TaskDetailPage() {
                                                         <HardwarePreparedDeviceForm
                                                             devices={preparedDevices}
                                                             onChange={handlePreparedDeviceChange}
+                                                            isLorawanProduct={task.product?.isLorawanProduct}
                                                         />
                                                     </div>
                                                 )}
@@ -781,12 +818,14 @@ export default function TaskDetailPage() {
                                                             }));
                                                         }
                                                         if (next === 'HARDWARE_PREPARED_COMPLETE') {
-                                                            // Send device list with serial numbers and firmware versions
+                                                            // Send device list with serial numbers, firmware versions, and LoRaWAN credentials
                                                             updatePayload.deviceList = preparedDevices.map(device => ({
                                                                 hardwareId: device.hardwareId,
                                                                 deviceSerial: device.deviceSerial,
                                                                 firmwareVersion: device.firmwareVersion,
-                                                                notes: device.notes || null
+                                                                notes: device.notes || null,
+                                                                devEui: device.devEui || null,
+                                                                appKey: device.appKey || null,
                                                             }));
                                                         }
                                                         updateStatusMutation.mutate({ status: next as OnboardingTask['currentStatus'], data: updatePayload });
@@ -1212,6 +1251,12 @@ export default function TaskDetailPage() {
                                         <CardTitle className="flex items-center gap-2">
                                             <HardDrive className="h-5 w-5 text-blue-600" />
                                             Provisioned Devices ({task.deviceProvisionings.length})
+                                            {task.product?.isLorawanProduct && (
+                                                <Badge className="bg-indigo-100 text-indigo-800 ml-2">
+                                                    <Wifi className="h-3 w-3 mr-1" />
+                                                    LoRaWAN
+                                                </Badge>
+                                            )}
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
@@ -1225,9 +1270,51 @@ export default function TaskDetailPage() {
                                                             <p className="text-sm text-gray-500">
                                                                 Type: {device.deviceType} • FW: {device.firmwareVersion}
                                                             </p>
+                                                            {/* LoRaWAN credentials display */}
+                                                            {task.product?.isLorawanProduct && device.devEui && (
+                                                                <p className="text-xs text-gray-400 font-mono mt-1">
+                                                                    DevEUI: {device.devEui}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
+                                                        {/* LoRaWAN Provisioning Status */}
+                                                        {task.product?.isLorawanProduct && device.lorawanProvisioningStatus && device.lorawanProvisioningStatus !== 'NOT_APPLICABLE' && (
+                                                            <div className="flex flex-col items-end mr-2">
+                                                                {device.lorawanProvisioningStatus === 'PENDING' && (
+                                                                    <Badge className="bg-yellow-100 text-yellow-800">
+                                                                        <Clock className="h-3 w-3 mr-1" />
+                                                                        LoRa Pending
+                                                                    </Badge>
+                                                                )}
+                                                                {device.lorawanProvisioningStatus === 'IN_PROGRESS' && (
+                                                                    <Badge className="bg-blue-100 text-blue-800">
+                                                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                                        Provisioning
+                                                                    </Badge>
+                                                                )}
+                                                                {device.lorawanProvisioningStatus === 'COMPLETED' && (
+                                                                    <Badge className="bg-green-100 text-green-800">
+                                                                        <Radio className="h-3 w-3 mr-1" />
+                                                                        LoRa Ready
+                                                                    </Badge>
+                                                                )}
+                                                                {device.lorawanProvisioningStatus === 'FAILED' && (
+                                                                    <div>
+                                                                        <Badge className="bg-red-100 text-red-800">
+                                                                            <AlertCircle className="h-3 w-3 mr-1" />
+                                                                            LoRa Failed
+                                                                        </Badge>
+                                                                        {device.lorawanProvisioningError && (
+                                                                            <p className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={device.lorawanProvisioningError}>
+                                                                                {device.lorawanProvisioningError}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {device.qrCode && device.qrCode !== 'PENDING' && device.qrCode.startsWith('data:image') ? (
                                                             <>
                                                                 <img

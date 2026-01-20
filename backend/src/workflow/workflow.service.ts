@@ -1,20 +1,24 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OnboardingTask, Prisma, TaskStatus } from '@prisma/client';
 import { SopTemplateService, SOPStep } from '../products/sop-template.service';
 import { StatusTransitionService } from './status-transition.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { QrCodeService } from '../hardware/qr-code.service';
+import { LorawanWebhookService } from '../integrations/lorawan';
 
 @Injectable()
 export class WorkflowService {
+  private readonly logger = new Logger(WorkflowService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly sopTemplateService: SopTemplateService,
     private readonly statusTransitionService: StatusTransitionService,
     private readonly notificationsService: NotificationsService,
     private readonly qrCodeService: QrCodeService,
-  ) { }
+    private readonly lorawanWebhookService: LorawanWebhookService,
+  ) {}
 
   /**
    * Retrieves all onboarding tasks.
@@ -407,6 +411,10 @@ export class WorkflowService {
         throw new BadRequestException('A valid user ID is required to provision devices');
       }
 
+      // Get product to check if it's a LoRaWAN product
+      const product = await this.prisma.product.findUnique({ where: { id: existingTask.productId } });
+      const isLorawanProduct = product?.isLorawanProduct ?? false;
+
       // Create device provisioning records
       for (const device of updateData.deviceList) {
         if (!device.deviceSerial || !device.firmwareVersion || !device.hardwareId) {
@@ -426,6 +434,10 @@ export class WorkflowService {
             qrCode: 'PENDING', // Will be generated in READY_FOR_INSTALLATION step
             provisionedBy: provisionerId,
             notes: device.notes || null,
+            // LoRaWAN fields
+            devEui: device.devEui || null,
+            appKey: device.appKey || null,
+            lorawanProvisioningStatus: isLorawanProduct ? 'PENDING' : 'NOT_APPLICABLE',
           }
         });
       }
@@ -458,6 +470,11 @@ export class WorkflowService {
           data: { qrCode }
         });
       }
+
+      // Fire-and-forget LoRaWAN provisioning webhook (don't block status update)
+      this.lorawanWebhookService.sendProvisioningWebhook(id).catch(err => {
+        this.logger.error(`LoRaWAN webhook failed for task ${id}: ${err.message}`);
+      });
     }
 
     const updatePayload: any = { currentStatus: status };

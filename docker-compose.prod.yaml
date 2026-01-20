@@ -12,11 +12,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U crm_admin -d crm_workflow"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - crm-network
 
   backend:
     build:
@@ -27,10 +31,14 @@ services:
       DATABASE_URL: postgresql://crm_admin:crm_admin_password@postgres:5432/crm_workflow?schema=public
       NODE_ENV: production
       HOST: 0.0.0.0
-      PORT: 3001
-      JWT_SECRET: change-me
+      PORT: 3004
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: 24h
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3005,http://localhost:3000}
+      # LoRaWAN Manager Integration
+      LORAWAN_MANAGER_URL: ${LORAWAN_MANAGER_URL:-http://host.docker.internal:3002}
+      LORAWAN_MANAGER_API_KEY: ${LORAWAN_MANAGER_API_KEY:-lorawan-webhook-key}
+      # WhatsApp (optional)
       WHATSAPP_API_URL: https://graph.facebook.com/v18.0
       WHATSAPP_ACCESS_TOKEN: ""
       WHATSAPP_PHONE_NUMBER_ID: ""
@@ -39,32 +47,37 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "3001:3001"
+      - "3004:3004"
+    networks:
+      - crm-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
       context: ./frontend
       args:
-        PROTOCOL: ${PROTOCOL:-https}
-        HOST_NAME: ${HOST_NAME:-crm.southerneleven.com}
-        PORT: ${PORT:-3000}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://crm.southerneleven.com}
-        NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN:-crm.southerneleven.com}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://10.10.8.108:3001}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3004}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3005}
+        NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN:-localhost}
+        PROTOCOL: ${PROTOCOL:-http}
+        HOST_NAME: ${HOST_NAME:-localhost}
+        PORT: "3005"
     container_name: crm-frontend
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PROTOCOL: http
-      HOST_NAME: localhost
-      PORT: 3000
-      NEXT_PUBLIC_SITE_URL: http://localhost:3000
-      NEXT_PUBLIC_DOMAIN: localhost
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      PORT: 3005
     depends_on:
       - backend
     ports:
-      - "3000:3000"
+      - "3005:3005"
+    networks:
+      - crm-network
+
+networks:
+  crm-network:
+    driver: bridge
 
 volumes:
   postgres_data:

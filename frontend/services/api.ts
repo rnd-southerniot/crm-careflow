@@ -194,6 +194,12 @@ export const usersApi = {
   },
 };
 
+// LoRaWAN Region Type
+export type LorawanRegion = 'EU868' | 'US915' | 'AU915' | 'AS923' | 'KR920' | 'IN865';
+
+// LoRaWAN Provisioning Status Type
+export type LorawanProvisioningStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
+
 // Products API
 export interface Product {
   id: string;
@@ -202,6 +208,9 @@ export interface Product {
   description: string;
   isActive?: boolean;
   parentProductId?: string;
+  // LoRaWAN Integration
+  isLorawanProduct?: boolean;
+  lorawanRegion?: LorawanRegion;
   sopTemplate?: {
     id: string;
     steps: Array<{
@@ -300,6 +309,24 @@ export interface HardwareProcurement {
   createdAt: string;
 }
 
+export interface DeviceProvisioning {
+  id: string;
+  deviceSerial: string;
+  deviceType: string;
+  hardwareId?: string;
+  firmwareVersion: string;
+  qrCode: string;
+  provisionedBy: string;
+  provisionedAt: string;
+  notes?: string;
+  // LoRaWAN fields
+  devEui?: string;
+  appKey?: string;
+  lorawanProvisioningStatus?: LorawanProvisioningStatus;
+  lorawanProvisioningError?: string;
+  lorawanProvisionedAt?: string;
+}
+
 export interface OnboardingTask {
   id: string;
   clientId?: string;
@@ -312,12 +339,12 @@ export interface OnboardingTask {
   productId: string;
   product: Product;
   currentStatus:
-  | 'INITIALIZATION'
-  | 'SCHEDULED_VISIT'
-  | 'REQUIREMENTS_COMPLETE'
-  | 'HARDWARE_PROCUREMENT_COMPLETE'
-  | 'HARDWARE_PREPARED_COMPLETE'
-  | 'READY_FOR_INSTALLATION';
+    | 'INITIALIZATION'
+    | 'SCHEDULED_VISIT'
+    | 'REQUIREMENTS_COMPLETE'
+    | 'HARDWARE_PROCUREMENT_COMPLETE'
+    | 'HARDWARE_PREPARED_COMPLETE'
+    | 'READY_FOR_INSTALLATION';
   assignedUserId?: string;
   assignedUser?: User;
   sopSnapshot: Array<{
@@ -334,17 +361,12 @@ export interface OnboardingTask {
     submittedBy: string;
     submittedAt: string;
   }>;
-  deviceProvisionings: Array<{
-    id: string;
-    deviceSerial: string;
-    deviceType: string;
-    hardwareId?: string;
-    firmwareVersion: string;
-    qrCode: string;
-    provisionedBy: string;
-    provisionedAt: string;
-  }>;
+  deviceProvisionings: DeviceProvisioning[];
   hardwareProcurements: HardwareProcurement[];
+  scheduledDate?: string;
+  // Location for gateway installation (LoRaWAN)
+  latitude?: number;
+  longitude?: number;
   createdAt: string;
   updatedAt: string;
 }
